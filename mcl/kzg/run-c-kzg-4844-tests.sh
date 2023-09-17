@@ -1,5 +1,7 @@
 #!/bin/bash
 
+C_KZG_4844_GIT_HASH=5703f6f3536b7692616bc289ac3f3867ab8db9d8
+
 set -e
 
 print_msg () {
@@ -37,9 +39,13 @@ else
   cargo rustc --release --crate-type=staticlib
 fi
 
+rm ../../target/release/rust_kzg_mcl.a
 mv ../../target/release/librust_kzg_mcl.a ../../target/release/rust_kzg_mcl.a
 
 ###################### cloning c-kzg-4844 ######################
+
+print_msg "Removing existing c-kzg-4844"
+rm -rf c-kzg-4844
 
 print_msg "Cloning c-kzg-4844"
 git clone https://github.com/ethereum/c-kzg-4844.git
