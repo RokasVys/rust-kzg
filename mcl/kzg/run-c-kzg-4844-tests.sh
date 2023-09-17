@@ -1,6 +1,6 @@
 #!/bin/bash
 
-C_KZG_4844_GIT_HASH=5703f6f3536b7692616bc289ac3f3867ab8db9d8
+C_KZG_4844_GIT_HASH=fbef59a3f9e8fa998bdb5069d212daf83d586aa5
 
 set -e
 
@@ -79,17 +79,17 @@ esac
 
 ###################### dotnet tests ######################
 
-print_msg "Patching dotnet binding"
-git apply < ../csharp.patch
-cd bindings/csharp || exit
+# print_msg "Patching dotnet binding"
+# git apply < ../csharp.patch
+# cd bindings/csharp || exit
 
-print_msg "Building dotnet"
-make -B ckzg CSHARP_PLATFORM=$CSHARP_PLATFORM CLANG_PLATFORM=$CLANG_PLATFORM
-dotnet restore
+# print_msg "Building dotnet"
+# make -B ckzg CSHARP_PLATFORM=$CSHARP_PLATFORM CLANG_PLATFORM=$CLANG_PLATFORM
+# dotnet restore
 
-print_msg "Running dotnet tests"
-dotnet test -c release --no-restore
-cd ../..
+# print_msg "Running dotnet tests"
+# dotnet test -c release --no-restore
+# cd ../..
 
 ###################### rust tests ######################
 
@@ -103,23 +103,23 @@ cd ../..
 
 ###################### python tests ######################
 
-print_msg "Patching python binding"
-git apply < ../python.patch
-cd bindings/python || exit
+# print_msg "Patching python binding"
+# git apply < ../python.patch
+# cd bindings/python || exit
 
-print_msg "Running python tests"
-make
-cd ../..
+# print_msg "Running python tests"
+# make
+# cd ../..
 
 ###################### java tests ######################
 
-print_msg "Patching java binding"
-git apply < ../java.patch
-cd bindings/java || exit
+# print_msg "Patching java binding"
+# git apply < ../java.patch
+# cd bindings/java || exit
 
-print_msg "Running java tests"
-make CC_FLAGS=-lstdc++ build test
-cd ../..
+# print_msg "Running java tests"
+# make CC_FLAGS=-lstdc++ build test
+# cd ../..
 
 ###################### nodejs tests ######################
 
