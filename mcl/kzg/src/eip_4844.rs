@@ -346,9 +346,9 @@ pub fn verify_blob_kzg_proof(
         return Err("Invalid proof".to_string());
     }
 
-    let polynomial = blob_to_polynomial(blob);
-    let evaluation_challenge_fr = compute_challenge(blob, commitment_g1);
-    let y_fr = evaluate_polynomial_in_evaluation_form(&polynomial, &evaluation_challenge_fr, ts);
+    let polynomial = blob_to_polynomial(blob)?;
+    let evaluation_challenge_fr = compute_challenge(blob, commitment_g1)?;
+    let y_fr = evaluate_polynomial_in_evaluation_form(&polynomial, &evaluation_challenge_fr, ts)?;
     verify_kzg_proof(commitment_g1, &evaluation_challenge_fr, &y_fr, proof_g1, ts)
 }
 
@@ -356,21 +356,21 @@ fn compute_challenges_and_evaluate_polynomial(
     blobs: &[Vec<Fr>],
     commitments_g1: &[G1],
     ts: &KZGSettings,
-) -> (Vec<Fr>, Vec<Fr>) {
+) -> Result<(Vec<Fr>, Vec<Fr>), String> {
     let mut evaluation_challenges_fr = Vec::new();
     let mut ys_fr = Vec::new();
 
     for i in 0..blobs.len() {
-        let polynomial = blob_to_polynomial(&blobs[i]);
-        let evaluation_challenge_fr = compute_challenge(&blobs[i], &commitments_g1[i]);
+        let polynomial = blob_to_polynomial(&blobs[i])?;
+        let evaluation_challenge_fr = compute_challenge(&blobs[i], &commitments_g1[i])?;
         let y_fr =
-            evaluate_polynomial_in_evaluation_form(&polynomial, &evaluation_challenge_fr, ts);
+            evaluate_polynomial_in_evaluation_form(&polynomial, &evaluation_challenge_fr, ts)?;
 
         evaluation_challenges_fr.push(evaluation_challenge_fr);
         ys_fr.push(y_fr);
     }
 
-    (evaluation_challenges_fr, ys_fr)
+    Ok((evaluation_challenges_fr, ys_fr))
 }
 
 fn validate_batched_input(commitments: &[G1], proofs: &[G1]) -> Result<(), String> {
@@ -458,7 +458,7 @@ pub fn verify_blob_kzg_proof_batch(
     {
         validate_batched_input(commitments_g1, proofs_g1)?;
         let (evaluation_challenges_fr, ys_fr) =
-            compute_challenges_and_evaluate_polynomial(blobs, commitments_g1, ts);
+            compute_challenges_and_evaluate_polynomial(blobs, commitments_g1, ts)?;
 
         Ok(verify_kzg_proof_batch(
             commitments_g1,
