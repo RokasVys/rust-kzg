@@ -1,9 +1,11 @@
 use crate::data_types::{fp::*, fr::*, g2::*};
 use crate::fk20_fft::FFTSettings as mFFTSettings;
 use crate::kzg_settings::KZGSettings as mKZGSettings;
+use crate::utilities::reverse_bit_order;
+
 use kzg::cfg_into_iter;
 use kzg::eip_4844::{
-    blst_p1, load_trusted_setup_string, Blob, Bytes32, Bytes48, CFFTSettings, CKZGSettings,
+    blst_p1, load_trusted_setup_string, Blob, Bytes32, Bytes48, CKZGSettings,
     KZGCommitment, KZGProof, BYTES_PER_FIELD_ELEMENT, BYTES_PER_G1, BYTES_PER_G2, C_KZG_RET,
     C_KZG_RET_BADARGS, C_KZG_RET_OK,
 };
@@ -15,6 +17,15 @@ use kzg::G1 as CommonG1;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+
+macro_rules! handle_ckzg_badargs {
+    ($x: expr) => {
+        match $x {
+            Ok(value) => value,
+            Err(_) => return C_KZG_RET_BADARGS,
+        }
+    };
+}
 
 unsafe fn cg1_to_g1(t: *const blst_p1) -> G1 {
     G1 {
@@ -28,21 +39,24 @@ unsafe fn ks_to_cks(t: &mut mKZGSettings, out: *mut CKZGSettings) {
     assert_eq!(t.curve.g1_points.len(), t.fft_settings.max_width);
     (*out).g1_values = t.curve.g1_points.as_mut_ptr() as _;
     (*out).g2_values = t.curve.g2_points.as_mut_ptr() as _;
-    let fs = CFFTSettings {
-        max_width: t.fft_settings.max_width as _,
-        roots_of_unity: t.fft_settings.expanded_roots_of_unity.as_mut_ptr() as _,
-        expanded_roots_of_unity: t.fft_settings.expanded_roots_of_unity.as_mut_ptr() as _,
-        reverse_roots_of_unity: t.fft_settings.reverse_roots_of_unity.as_mut_ptr() as _,
-    };
-    let b = Box::new(fs);
-    (*out).fs = Box::into_raw(b);
+    (*out).max_width = t.fft_settings.max_width as _;
+    (*out).roots_of_unity = t.fft_settings.expanded_roots_of_unity.as_mut_ptr() as _;
 }
 
 unsafe fn cks_to_ks(t: *const CKZGSettings) -> mKZGSettings {
     crate::fk20_fft::init_globals();
-    let fs = (*t).fs;
-    let mw = (*fs).max_width as usize;
-    let mut ks = mKZGSettings {
+    let mw = (*t).max_width as usize;
+    let roots_of_unity = Vec::from_raw_parts((*t).roots_of_unity as _, mw + 1, mw + 1);
+    let mut expanded_roots_of_unity = roots_of_unity.clone();
+    reverse_bit_order(&mut expanded_roots_of_unity);
+    expanded_roots_of_unity.push(Fr::one());
+    let mut reverse_roots_of_unity = expanded_roots_of_unity.clone();
+    reverse_roots_of_unity.reverse();
+
+    let mut first_root = expanded_roots_of_unity[1];
+    let first_root_arr = [first_root; 1];
+    first_root = first_root_arr[0];
+    mKZGSettings {
         curve: crate::kzg10::Curve {
             g1_gen: G1::gen(),
             g2_gen: G2::gen(),
@@ -51,22 +65,12 @@ unsafe fn cks_to_ks(t: *const CKZGSettings) -> mKZGSettings {
         },
         fft_settings: mFFTSettings {
             max_width: mw,
-            root_of_unity: Fr::default(),
-            expanded_roots_of_unity: Vec::from_raw_parts(
-                (*fs).expanded_roots_of_unity as _,
-                mw + 1,
-                mw + 1,
-            ),
-            reverse_roots_of_unity: Vec::from_raw_parts(
-                (*fs).reverse_roots_of_unity as _,
-                mw + 1,
-                mw + 1,
-            ),
-            roots_of_unity: Vec::from_raw_parts((*fs).roots_of_unity as _, mw + 1, mw + 1),
+            root_of_unity: first_root,
+            expanded_roots_of_unity,
+            reverse_roots_of_unity,
+            roots_of_unity,
         },
-    };
-    ks.fft_settings.root_of_unity = ks.fft_settings.expanded_roots_of_unity[1];
-    ks
+    }
 }
 
 unsafe fn deserialize_blob(blob: *const Blob) -> Result<Vec<Fr>, C_KZG_RET> {
@@ -112,10 +116,13 @@ pub unsafe extern "C" fn load_trusted_setup(
     n2: usize,
 ) -> C_KZG_RET {
     assert!(crate::mcl_methods::init(crate::CurveType::BLS12_381));
-    let mut mks = crate::eip_4844::load_trusted_setup_from_bytes(
+    let mut mks = match crate::eip_4844::load_trusted_setup_from_bytes(
         from_raw_parts(g1_bytes, n1 * BYTES_PER_G1),
         from_raw_parts(g2_bytes, n2 * BYTES_PER_G2),
-    );
+    ) {
+        Ok(value) => value,
+        Err(_) => return C_KZG_RET_BADARGS 
+    };
     ks_to_cks(&mut mks, out);
     std::mem::forget(mks);
     C_KZG_RET_OK
@@ -133,9 +140,15 @@ pub unsafe extern "C" fn load_trusted_setup_file(
     let len: usize = libc::fread(buf.as_mut_ptr() as *mut libc::c_void, 1, buf.len(), in_);
     let s = String::from_utf8(buf[..len].to_vec()).unwrap();
 
-    let (g1_bytes, g2_bytes) = load_trusted_setup_string(&s);
-    let mut mks =
-        crate::eip_4844::load_trusted_setup_from_bytes(g1_bytes.as_slice(), g2_bytes.as_slice());
+    let (g1_bytes, g2_bytes) = match load_trusted_setup_string(&s) {
+        Ok(value) => value,
+        Err(_) => return C_KZG_RET_BADARGS
+    };
+    let mut mks = match
+        crate::eip_4844::load_trusted_setup_from_bytes(g1_bytes.as_slice(), g2_bytes.as_slice()) {
+            Ok(value) => value,
+            Err(_) => return C_KZG_RET_BADARGS
+        };
     ks_to_cks(&mut mks, out);
     std::mem::forget(mks);
 
@@ -147,8 +160,6 @@ pub unsafe extern "C" fn load_trusted_setup_file(
 pub unsafe extern "C" fn free_trusted_setup(s: *mut CKZGSettings) {
     assert!(crate::mcl_methods::init(crate::CurveType::BLS12_381));
     drop(cks_to_ks(s));
-    let fs = Box::from_raw((*s).fs as *mut CFFTSettings);
-    drop(fs);
 }
 
 /// # Safety
@@ -290,7 +301,7 @@ pub unsafe extern "C" fn blob_to_kzg_commitment(
         return deserialized_blob.err().unwrap();
     }
     let ms = cks_to_ks(s);
-    let tmp = crate::eip_4844::blob_to_kzg_commitment(&deserialized_blob.unwrap(), &ms);
+    let tmp = handle_ckzg_badargs!( crate::eip_4844::blob_to_kzg_commitment(&deserialized_blob.unwrap(), &ms));
     (*out).bytes = G1::to_bytes(&tmp);
     std::mem::forget(ms);
 
@@ -356,8 +367,7 @@ pub unsafe extern "C" fn compute_kzg_proof(
         return C_KZG_RET_BADARGS;
     }
     let ms = cks_to_ks(s);
-    let (proof_out_tmp, fry_tmp) =
-        crate::eip_4844::compute_kzg_proof(&deserialized_blob.unwrap(), &frz.unwrap(), &ms);
+    let (proof_out_tmp, fry_tmp) = handle_ckzg_badargs!( crate::eip_4844::compute_kzg_proof(&deserialized_blob.unwrap(), &frz.unwrap(), &ms) );
     (*proof_out).bytes = G1::to_bytes(&proof_out_tmp);
     (*y_out).bytes = Fr::to_bytes(&fry_tmp);
     std::mem::forget(ms);

@@ -23,9 +23,9 @@ extern "C" {
     fn mclBnFr_deserialize(x: *mut Fr, buf: *const u8, bufSize: usize) -> usize;
 
     fn mclBnFr_setInt32(x: *mut Fr, v: i32);
-    fn mclBnFr_setLittleEndian(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
-    fn mclBnFr_getLittleEndian(buf: *mut u8, bufSize: usize, x: *const Fr) -> i32;
-    fn mclBnFr_setLittleEndianMod(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
+    fn mclBnFr_setBigEndian(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
+    fn mclBnFr_getBigEndian(buf: *mut u8, bufSize: usize, x: *const Fr) -> i32;
+    fn mclBnFr_setBigEndianMod(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFr_setHashOf(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFr_setByCSPRNG(x: *mut Fr);
 
@@ -80,7 +80,7 @@ impl Fr {
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
         let mut t = Fr::default();
-        if !t.set_little_endian_mod(bytes) {
+        if !t.set_big_endian_mod(bytes) {
             return Err("Invalid scalar".to_string());
         }
         Ok(t)
@@ -88,7 +88,7 @@ impl Fr {
 
     pub fn to_bytes(fr: &Self) -> [u8; 32] {
         let mut buf = [0u8; 32];
-        assert!(fr.get_little_endian(&mut buf));
+        assert!(fr.get_big_endian(&mut buf));
         buf
     }
 
@@ -113,9 +113,9 @@ str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
 int_impl![Fr, mclBnFr_setInt32, mclBnFr_isOne];
 base_field_impl![
     Fr,
-    mclBnFr_setLittleEndian,
-    mclBnFr_getLittleEndian,
-    mclBnFr_setLittleEndianMod,
+    mclBnFr_setBigEndian,
+    mclBnFr_getBigEndian,
+    mclBnFr_setBigEndianMod,
     mclBnFr_setHashOf,
     mclBnFr_setByCSPRNG,
     mclBnFr_isOdd,

@@ -263,6 +263,7 @@ impl FFTSettings {
 
         // Permute the roots of unity
         let mut roots_of_unity = expanded_roots_of_unity.clone();
+        roots_of_unity.pop();
         reverse_bit_order(&mut roots_of_unity);
 
         FFTSettings {
