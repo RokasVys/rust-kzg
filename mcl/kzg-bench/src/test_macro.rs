@@ -63,7 +63,7 @@ macro_rules! field_test {
         z /= &y;
         assert_eq!(z, w);
 
-        assert!(x.set_little_endian_mod(&[1, 2, 3, 4, 5]));
+        assert!(x.set_big_endian_mod(&[1, 2, 3, 4, 5]));
         assert_eq!(x.get_str(16), "504030201");
         <$t>::sqr(&mut y, &x);
         <$t>::mul(&mut z, &x, &x);

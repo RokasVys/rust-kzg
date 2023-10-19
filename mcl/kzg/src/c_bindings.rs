@@ -9,7 +9,6 @@ use kzg::eip_4844::{
     KZGCommitment, KZGProof, BYTES_PER_FIELD_ELEMENT, BYTES_PER_G1, BYTES_PER_G2, C_KZG_RET,
     C_KZG_RET_BADARGS, C_KZG_RET_OK,
 };
-use std::boxed::Box;
 use std::slice::{from_raw_parts, from_raw_parts_mut};
 
 use crate::data_types::g1::G1;

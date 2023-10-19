@@ -23,9 +23,9 @@ extern "C" {
     fn mclBnFp_deserialize(x: *mut Fp, buf: *const u8, bufSize: usize) -> usize;
 
     fn mclBnFp_setInt32(x: *mut Fp, v: i32);
-    fn mclBnFp_setLittleEndian(x: *mut Fp, buf: *const u8, bufSize: usize) -> i32;
+    fn mclBnFp_setBigEndian(x: *mut Fp, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFp_getLittleEndian(buf: *mut u8, bufSize: usize, x: *const Fp) -> i32;
-    fn mclBnFp_setLittleEndianMod(x: *mut Fp, buf: *const u8, bufSize: usize) -> i32;
+    fn mclBnFp_setBigEndianMod(x: *mut Fp, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFp_setHashOf(x: *mut Fp, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFp_setByCSPRNG(x: *mut Fp);
 
@@ -39,6 +39,17 @@ extern "C" {
     fn mclBnFp_sqr(y: *mut Fp, x: *const Fp);
     fn mclBnFp_squareRoot(y: *mut Fp, x: *const Fp) -> i32;
 
+}
+
+unsafe fn mclBnFp_getBigEndian(buf: *mut u8, bufSize: usize, x: *const Fp) -> i32
+{
+    let size = mclBnFp_getLittleEndian(buf, bufSize, x);
+    for i in 0..size / 2 {
+        let temp = *buf.offset(i as isize);
+        *buf.offset(i as isize) = *buf.offset((size - i - 1) as isize);
+        *buf.offset((size - i - 1) as isize) = temp;
+    }
+    size
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -63,9 +74,9 @@ str_impl![Fp, 1024, mclBnFp_getStr, mclBnFp_setStr];
 int_impl![Fp, mclBnFp_setInt32, mclBnFp_isOne];
 base_field_impl![
     Fp,
-    mclBnFp_setLittleEndian,
-    mclBnFp_getLittleEndian,
-    mclBnFp_setLittleEndianMod,
+    mclBnFp_setBigEndian,
+    mclBnFp_getBigEndian,
+    mclBnFp_setBigEndianMod,
     mclBnFp_setHashOf,
     mclBnFp_setByCSPRNG,
     mclBnFp_isOdd,

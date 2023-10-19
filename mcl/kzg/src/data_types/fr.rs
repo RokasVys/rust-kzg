@@ -24,7 +24,7 @@ extern "C" {
 
     fn mclBnFr_setInt32(x: *mut Fr, v: i32);
     fn mclBnFr_setBigEndian(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
-    fn mclBnFr_getBigEndian(buf: *mut u8, bufSize: usize, x: *const Fr) -> i32;
+    fn mclBnFr_getLittleEndian(buf: *mut u8, bufSize: usize, x: *const Fr) -> i32;
     fn mclBnFr_setBigEndianMod(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFr_setHashOf(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFr_setByCSPRNG(x: *mut Fr);
@@ -38,6 +38,17 @@ extern "C" {
     fn mclBnFr_inv(y: *mut Fr, x: *const Fr);
     fn mclBnFr_sqr(y: *mut Fr, x: *const Fr);
     fn mclBnFr_squareRoot(y: *mut Fr, x: *const Fr) -> i32;
+}
+
+unsafe fn mclBnFr_getBigEndian(buf: *mut u8, bufSize: usize, x: *const Fr) -> i32
+{
+    let size = mclBnFr_getLittleEndian(buf, bufSize, x);
+    for i in 0..size / 2 {
+        let temp = *buf.offset(i as isize);
+        *buf.offset(i as isize) = *buf.offset((size - i - 1) as isize);
+        *buf.offset((size - i - 1) as isize) = temp;
+    }
+    size
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -73,7 +84,7 @@ impl Fr {
     pub fn from_u64_arr(u: &[u64; 4]) -> Self {
         let mut arr = [0u8; 32];
         for i in 0..4 {
-            arr[i * 8..i * 8 + 8].copy_from_slice(&u[i].to_le_bytes());
+            arr[(3 - i) * 8..(3 - i) * 8 + 8].copy_from_slice(&u[i].to_be_bytes());
         }
         Fr::from_bytes(&arr).unwrap()
     }
@@ -93,11 +104,14 @@ impl Fr {
     }
 
     pub fn to_u64_arr(&self) -> [u64; 4] {
-        let v: Vec<u64> = Fr::to_bytes(self)
+        let mut bytes = Fr::to_bytes(self);
+        bytes.reverse();
+    
+        let v: Vec<u64> = bytes
             .chunks(8)
-            .map(|ch| u64::from_le_bytes(ch.try_into().unwrap()))
+            .map(|ch| u64::from_be_bytes(ch.try_into().unwrap()))
             .collect();
-
+    
         v.try_into().unwrap()
     }
 }
