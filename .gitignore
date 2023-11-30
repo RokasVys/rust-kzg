@@ -1,3 +1,8 @@
 .idea
 .directory
 target
+.vs/CMakeWorkspaceSettings.json
+.vs/ProjectSettings.json
+.vs/slnx.sqlite
+.vs/rust-kzg/v17/.wsuo
+.vs/rust-kzg/FileContentIndex/c843c00e-39e8-4950-92fd-f0460fd40b80.vsidx

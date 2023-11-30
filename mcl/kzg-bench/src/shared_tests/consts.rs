@@ -34,6 +34,7 @@ mod consts_tests {
 
     #[test]
     fn expand_roots_is_plausible_() {
+        println!("test1");
         assert!(init(CurveType::BLS12_381));
         unsafe {
             init_globals();
@@ -41,6 +42,7 @@ mod consts_tests {
             for i in 0..SCALE_2_ROOT_OF_UNITY.len() {
                 scale2_root_of_unity_arr[i] = SCALE_2_ROOT_OF_UNITY[i].to_u64_arr();
             }
+            println!("test2");
             expand_roots_is_plausible::<Fr>(&scale2_root_of_unity_arr, &expand_root_of_unityarr);
         }
     }
