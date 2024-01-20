@@ -26,26 +26,23 @@ pub fn roots_of_unity_are_plausible<TFr: Fr>(roots: &[[u64; 4]; 32]) {
 pub fn expand_roots_is_plausible<TFr: Fr>(
     roots: &[[u64; 4]; 32],
     expand_root_of_unity: &dyn Fn(&TFr, usize) -> Result<Vec<TFr>, String>,
-) {
-    let scale = 15;
+) {   
+    let scale = 15; 
     let width: usize = 1 << scale;
-
+    
     let root = TFr::from_u64_arr(&roots[scale]);
-    let expanded = expand_root_of_unity(&root, width).unwrap();
+    //panic!("crash and burn");
+    let expanded = expand_root_of_unity(&root, width).unwrap(); // this function continues without an end
 
-    //println!("test3");
-    //println!("{:?}", expanded[0].is_one());
     assert!(expanded[0].is_one());
-    //println!("{:?}", expanded[width].is_one());
+
     assert!(expanded[width].is_one());
 
     // Multiply symmetrically and check if the result is 1
     for i in 0..(width / 2 + 1) {
         let prod = expanded[i].mul(&expanded[width - i]);
-        //println!("{:?}", prod.is_one());
         assert!(prod.is_one());
     }
-    //println!("test4");
 }
 
 /// Check if generated reverse roots are reversed correctly and multiply with expanded roots to result in 1.
