@@ -1,0 +1,17 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\kzg-bench",
+    "\\kzg-bench\\src",
+    "\\kzg-bench\\src\\tests",
+    "\\mcl",
+    "\\mcl\\kzg",
+    "\\mcl\\kzg-bench",
+    "\\mcl\\kzg-bench\\src",
+    "\\mcl\\kzg-bench\\src\\shared_tests",
+    "\\mcl\\kzg\\src",
+    "\\mcl\\kzg\\src\\data_types"
+  ],
+  "SelectedNode": "\\mcl\\kzg\\src\\eip_4844.rs",
+  "PreviewInSolutionExplorer": false
+}

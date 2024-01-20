@@ -33,19 +33,19 @@ pub fn expand_roots_is_plausible<TFr: Fr>(
     let root = TFr::from_u64_arr(&roots[scale]);
     let expanded = expand_root_of_unity(&root, width).unwrap();
 
-    println!("test3");
-    println!("{:?}", expanded[0].is_one());
+    //println!("test3");
+    //println!("{:?}", expanded[0].is_one());
     assert!(expanded[0].is_one());
-    println!("{:?}", expanded[width].is_one());
+    //println!("{:?}", expanded[width].is_one());
     assert!(expanded[width].is_one());
 
     // Multiply symmetrically and check if the result is 1
     for i in 0..(width / 2 + 1) {
         let prod = expanded[i].mul(&expanded[width - i]);
-        println!("{:?}", prod.is_one());
+        //println!("{:?}", prod.is_one());
         assert!(prod.is_one());
     }
-    println!("test4");
+    //println!("test4");
 }
 
 /// Check if generated reverse roots are reversed correctly and multiply with expanded roots to result in 1.

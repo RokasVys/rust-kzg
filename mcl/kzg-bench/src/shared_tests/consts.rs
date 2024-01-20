@@ -34,15 +34,15 @@ mod consts_tests {
 
     #[test]
     fn expand_roots_is_plausible_() {
-        println!("test1");
         assert!(init(CurveType::BLS12_381));
         unsafe {
+            eprintln!("test1");
             init_globals();
             let mut scale2_root_of_unity_arr: [[u64; 4]; 32] = [[0; 4]; 32];
             for i in 0..SCALE_2_ROOT_OF_UNITY.len() {
                 scale2_root_of_unity_arr[i] = SCALE_2_ROOT_OF_UNITY[i].to_u64_arr();
             }
-            println!("test2");
+            eprintln!("test2");
             expand_roots_is_plausible::<Fr>(&scale2_root_of_unity_arr, &expand_root_of_unityarr);
         }
     }
