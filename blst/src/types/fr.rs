@@ -12,6 +12,7 @@ use blst::{
 };
 use kzg::eip_4844::BYTES_PER_FIELD_ELEMENT;
 use kzg::Fr;
+use kzg::Scalar256;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct FsFr(pub blst_fr);
@@ -66,6 +67,27 @@ impl Fr for FsFr {
                     blst_fr_from_scalar(&mut fr, &bls_scalar);
                 }
                 Ok(Self(fr))
+            })
+    }
+
+    fn from_bytes_unchecked(bytes: &[u8]) -> Result<Self, String> {
+        bytes
+            .try_into()
+            .map_err(|_| {
+                format!(
+                    "Invalid byte length. Expected {}, got {}",
+                    BYTES_PER_FIELD_ELEMENT,
+                    bytes.len()
+                )
+            })
+            .map(|bytes: &[u8; BYTES_PER_FIELD_ELEMENT]| {
+                let mut bls_scalar = blst_scalar::default();
+                let mut fr = blst_fr::default();
+                unsafe {
+                    blst_scalar_from_bendian(&mut bls_scalar, bytes.as_ptr());
+                    blst_fr_from_scalar(&mut fr, &bls_scalar);
+                }
+                Self(fr)
             })
     }
 
@@ -230,15 +252,12 @@ impl Fr for FsFr {
 
         val_a[0] == val_b[0] && val_a[1] == val_b[1] && val_a[2] == val_b[2] && val_a[3] == val_b[3]
     }
-}
 
-impl FsFr {
-    pub fn hash_to_bls_field(scalar: [u8; 32usize]) -> Self {
-        let bls_scalar = blst_scalar { b: scalar };
-        let mut fr = blst_fr::default();
+    fn to_scalar(&self) -> Scalar256 {
+        let mut blst_scalar = blst_scalar::default();
         unsafe {
-            blst_fr_from_scalar(&mut fr, &bls_scalar);
+            blst_scalar_from_fr(&mut blst_scalar, &self.0);
         }
-        Self(fr)
+        Scalar256::from_u8(&blst_scalar.b)
     }
 }

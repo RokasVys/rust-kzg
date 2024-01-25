@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 cc = "1.0"
-blst = {'git' = 'https://github.com/supranational/blst.git'}
+blst = "0.3.11"
 kzg = { path = "../../kzg" }
 primitive-types = "0.12.0"
 rayon = { version = "1.5.1", optional = true }
@@ -18,8 +18,7 @@ num_cpus = "1.15.0"
 hex = "0.4.2"
 
 [features]
-parallel = ["rayon"]
-minimal-spec = ["kzg/minimal-spec"]
+parallel = ["rayon", "kzg/parallel"]
 
 [build-dependencies]
 cc = "1.0"
