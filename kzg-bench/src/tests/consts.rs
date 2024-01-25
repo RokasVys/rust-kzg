@@ -32,7 +32,7 @@ pub fn expand_roots_is_plausible<TFr: Fr>(
     
     let root = TFr::from_u64_arr(&roots[scale]);
     //panic!("crash and burn");
-    /*let expanded = expand_root_of_unity(&root, width).unwrap(); //.unwrap(); // this function continues without an end
+    let expanded = expand_root_of_unity(&root, width).unwrap(); //.unwrap(); // this function continues without an end
 
     assert!(expanded[0].is_one());
 
@@ -42,8 +42,8 @@ pub fn expand_roots_is_plausible<TFr: Fr>(
     for i in 0..(width / 2 + 1) {
         let prod = expanded[i].mul(&expanded[width - i]);
         assert!(prod.is_one());
-    }*/
-    println!("Expanding root of unity with width: {}", width);
+    }
+    //println!("Expanding root of unity with width: {}", width);
     /*match expand_root_of_unity(&root, width) {
         Ok(expanded) => {
             assert!(expanded[0].is_one());

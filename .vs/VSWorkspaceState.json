@@ -1,11 +1,17 @@
 {
   "ExpandedNodes": [
     "",
+    "\\arkworks",
+    "\\arkworks\\tests",
+    "\\kzg-bench",
+    "\\kzg-bench\\src",
+    "\\kzg-bench\\src\\tests",
     "\\mcl",
     "\\mcl\\kzg",
-    "\\mcl\\kzg\\src",
-    "\\mcl\\kzg\\src\\data_types"
+    "\\mcl\\kzg-bench",
+    "\\mcl\\kzg-bench\\src",
+    "\\mcl\\kzg-bench\\src\\shared_tests"
   ],
-  "SelectedNode": "\\mcl\\kzg\\src\\data_types\\fr.rs",
+  "SelectedNode": "\\kzg-bench\\src\\tests\\consts.rs",
   "PreviewInSolutionExplorer": false
 }
