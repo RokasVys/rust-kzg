@@ -1,7 +1,8 @@
-use crate::fft_g1::G1_IDENTITY;
+use crate::consts::G1_IDENTITY;
 use crate::kzg_proofs::{FFTSettings, KZGSettings};
-use crate::kzg_types::{ArkG1, ArkG2, FsFr as BlstFr};
+use crate::kzg_types::{ArkFp, ArkFr as BlstFr, ArkG1, ArkG1Affine, ArkG2};
 use crate::utils::PolyData;
+use kzg::common_utils::reverse_bit_order;
 use kzg::{FFTFr, FK20MultiSettings, FK20SingleSettings, Fr, G1Mul, Poly, FFTG1, G1};
 
 #[cfg(feature = "parallel")]
@@ -24,22 +25,8 @@ pub struct KzgFK20MultiSettings {
     pub length: usize,
 }
 
-fn reverse_bit_order<T>(vals: &mut [T])
-where
-    T: Clone,
-{
-    let unused_bit_len = vals.len().leading_zeros() + 1;
-    for i in 0..vals.len() - 1 {
-        let r = i.reverse_bits() >> unused_bit_len;
-        if r > i {
-            let tmp = vals[r].clone();
-            vals[r] = vals[i].clone();
-            vals[i] = tmp;
-        }
-    }
-}
-
-impl FK20SingleSettings<BlstFr, ArkG1, ArkG2, FFTSettings, PolyData, KZGSettings>
+impl
+    FK20SingleSettings<BlstFr, ArkG1, ArkG2, FFTSettings, PolyData, KZGSettings, ArkFp, ArkG1Affine>
     for KzgFK20SingleSettings
 {
     fn new(ks: &KZGSettings, n2: usize) -> Result<Self, String> {
@@ -89,7 +76,7 @@ impl FK20SingleSettings<BlstFr, ArkG1, ArkG2, FFTSettings, PolyData, KZGSettings
         }
 
         let mut out = fk20_single_da_opt(p, self).unwrap();
-        reverse_bit_order(&mut out);
+        reverse_bit_order(&mut out)?;
         Ok(out)
     }
 
@@ -98,7 +85,7 @@ impl FK20SingleSettings<BlstFr, ArkG1, ArkG2, FFTSettings, PolyData, KZGSettings
     }
 }
 
-impl FK20MultiSettings<BlstFr, ArkG1, ArkG2, FFTSettings, PolyData, KZGSettings>
+impl FK20MultiSettings<BlstFr, ArkG1, ArkG2, FFTSettings, PolyData, KZGSettings, ArkFp, ArkG1Affine>
     for KzgFK20MultiSettings
 {
     fn new(ks: &KZGSettings, n2: usize, chunk_len: usize) -> Result<Self, String> {
@@ -175,7 +162,7 @@ impl FK20MultiSettings<BlstFr, ArkG1, ArkG2, FFTSettings, PolyData, KZGSettings>
         }
 
         let mut out = fk20_multi_da_opt(p, self).unwrap();
-        reverse_bit_order(&mut out);
+        reverse_bit_order(&mut out)?;
         Ok(out)
     }
 
@@ -227,7 +214,7 @@ fn fk20_multi_da_opt(p: &PolyData, fk: &KzgFK20MultiSettings) -> Result<Vec<ArkG
         h_ext_fft.push(G1_IDENTITY);
     }
 
-    let mut toeplitz_coeffs = PolyData::new(n2 / fk.chunk_len).unwrap();
+    let mut toeplitz_coeffs = PolyData::new(n2 / fk.chunk_len);
     for i in 0..fk.chunk_len {
         toeplitz_coeffs =
             toeplitz_coeffs_stride(p, i, fk.chunk_len, toeplitz_coeffs.len()).unwrap();
@@ -272,7 +259,7 @@ fn toeplitz_coeffs_stride(
         return Err(String::from("outlen must be equal or greater than k2"));
     }
 
-    let mut out = PolyData::new(outlen).unwrap();
+    let mut out = PolyData::new(outlen);
     out.set_coeff_at(0, &poly.coeffs[n - 1 - offset]);
     let mut i = 1;
     while i <= (k + 1) && i < k2 {

@@ -4,6 +4,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use kzg::common_utils::reverse_bit_order;
 use kzg::{FK20MultiSettings, Poly, FFTG1, G1};
 
 use crate::types::fft_settings::FsFFTSettings;
@@ -12,7 +13,9 @@ use crate::types::g1::FsG1;
 use crate::types::g2::FsG2;
 use crate::types::kzg_settings::FsKZGSettings;
 use crate::types::poly::FsPoly;
-use crate::utils::reverse_bit_order;
+
+use super::fp::FsFp;
+use super::g1::FsG1Affine;
 
 pub struct FsFK20MultiSettings {
     pub kzg_settings: FsKZGSettings,
@@ -40,7 +43,7 @@ impl Default for FsFK20MultiSettings {
     }
 }
 
-impl FK20MultiSettings<FsFr, FsG1, FsG2, FsFFTSettings, FsPoly, FsKZGSettings>
+impl FK20MultiSettings<FsFr, FsG1, FsG2, FsFFTSettings, FsPoly, FsKZGSettings, FsFp, FsG1Affine>
     for FsFK20MultiSettings
 {
     #[allow(clippy::many_single_char_names)]
@@ -75,7 +78,7 @@ impl FK20MultiSettings<FsFr, FsG1, FsG2, FsFFTSettings, FsPoly, FsKZGSettings>
                 let mut j = start;
 
                 while i + 1 < k {
-                    x.push(ks.secret_g1[j as usize]);
+                    x.push(ks.secret_g1[j]);
 
                     i += 1;
 
@@ -117,7 +120,7 @@ impl FK20MultiSettings<FsFr, FsG1, FsG2, FsFFTSettings, FsPoly, FsKZGSettings>
         }
 
         let mut ret = self.data_availability_optimized(p).unwrap();
-        reverse_bit_order(&mut ret);
+        reverse_bit_order(&mut ret)?;
 
         Ok(ret)
     }

@@ -4,12 +4,12 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use kzg::common_utils::{log2_pow2, log2_u64, next_pow_of_2};
 use kzg::{FFTFr, FFTSettings, FFTSettingsPoly, Fr, Poly};
 
 use crate::consts::SCALE_FACTOR;
 use crate::types::fft_settings::FsFFTSettings;
 use crate::types::fr::FsFr;
-use crate::utils::{log2_pow2, log2_u64};
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct FsPoly {
@@ -17,10 +17,10 @@ pub struct FsPoly {
 }
 
 impl Poly<FsFr> for FsPoly {
-    fn new(size: usize) -> Result<Self, String> {
-        Ok(Self {
+    fn new(size: usize) -> Self {
+        Self {
             coeffs: vec![FsFr::default(); size],
-        })
+        }
     }
 
     fn get_coeff_at(&self, i: usize) -> FsFr {
@@ -108,7 +108,7 @@ impl Poly<FsFr> for FsPoly {
 
         // Max space for multiplications is (2 * length - 1)
         // Don't need the following as its recalculated inside
-        // let scale: usize = log2_pow2(next_power_of_two(2 * output_len - 1));
+        // let scale: usize = log2_pow2(next_pow_of_2(2 * output_len - 1));
         // let fft_settings = FsFFTSettings::new(scale).unwrap();
 
         // To store intermediate results
@@ -251,7 +251,7 @@ impl Poly<FsFr> for FsPoly {
 
     fn mul_direct(&mut self, multiplier: &Self, output_len: usize) -> Result<Self, String> {
         if self.len() == 0 || multiplier.len() == 0 {
-            return Ok(FsPoly::new(0).unwrap());
+            return Ok(FsPoly::new(0));
         }
 
         let a_degree = self.len() - 1;
@@ -338,7 +338,7 @@ impl FsPoly {
     }
 
     pub fn mul_fft(&self, multiplier: &Self, output_len: usize) -> Result<Self, String> {
-        let length = (self.len() + multiplier.len() - 1).next_power_of_two();
+        let length = next_pow_of_2(self.len() + multiplier.len() - 1);
 
         let scale = log2_pow2(length);
         let fft_settings = FsFFTSettings::new(scale).unwrap();

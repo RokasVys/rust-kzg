@@ -1,124 +1,38 @@
+use crate::consts::G1_GENERATOR;
 use crate::kzg_proofs::FFTSettings;
-use crate::kzg_types::{ArkG1, FsFr as BlstFr};
-use crate::utils::{
-    blst_fr_into_pc_fr, blst_p1_into_pc_g1projective, pc_g1projective_into_blst_p1,
-};
-use ark_bls12_381::{Fr as ArkFr, G1Affine};
-use ark_ec::msm::VariableBaseMSM;
-use ark_ec::ProjectiveCurve;
-use ark_ff::{BigInteger256, PrimeField};
-use blst::{blst_fp, blst_p1};
-use kzg::{cfg_into_iter, G1Mul};
-use kzg::{Fr, FFTG1, G1};
+use crate::kzg_types::{ArkFp, ArkFr, ArkG1, ArkG1Affine};
 
-#[cfg(feature = "parallel")]
-use rayon::iter::IntoParallelIterator;
-#[cfg(feature = "parallel")]
-use rayon::iter::ParallelIterator;
+use crate::kzg_types::ArkG1ProjAddAffine;
 
-pub const G1_NEGATIVE_GENERATOR: blst_p1 = blst_p1 {
-    x: blst_fp {
-        l: [
-            0x5cb38790fd530c16,
-            0x7817fc679976fff5,
-            0x154f95c7143ba1c1,
-            0xf0ae6acdf3d0e747,
-            0xedce6ecc21dbf440,
-            0x120177419e0bfb75,
-        ],
-    },
-    y: blst_fp {
-        l: [
-            0xff526c2af318883a,
-            0x92899ce4383b0270,
-            0x89d7738d9fa9d055,
-            0x12caf35ba344c12a,
-            0x3cff1b76964b5317,
-            0x0e44d2ede9774430,
-        ],
-    },
-    z: blst_fp {
-        l: [
-            0x760900000002fffd,
-            0xebf4000bc40c0002,
-            0x5f48985753c758ba,
-            0x77ce585370525745,
-            0x5c071a97a256ec6d,
-            0x15f65ec3fa80e493,
-        ],
-    },
-};
+use kzg::msm::msm_impls::msm;
 
-/** The G1 generator */
-pub const G1_GENERATOR: blst_p1 = blst_p1 {
-    x: blst_fp {
-        l: [
-            0x5cb38790fd530c16,
-            0x7817fc679976fff5,
-            0x154f95c7143ba1c1,
-            0xf0ae6acdf3d0e747,
-            0xedce6ecc21dbf440,
-            0x120177419e0bfb75,
-        ],
-    },
-    y: blst_fp {
-        l: [
-            0xbaac93d50ce72271,
-            0x8c22631a7918fd8e,
-            0xdd595f13570725ce,
-            0x51ac582950405194,
-            0x0e1c8c3fad0059c0,
-            0x0bbc3efc5008a26a,
-        ],
-    },
-    z: blst_fp {
-        l: [
-            0x760900000002fffd,
-            0xebf4000bc40c0002,
-            0x5f48985753c758ba,
-            0x77ce585370525745,
-            0x5c071a97a256ec6d,
-            0x15f65ec3fa80e493,
-        ],
-    },
-};
+use kzg::msm::precompute::PrecomputationTable;
+use kzg::{Fr as KzgFr, G1Mul};
+use kzg::{FFTG1, G1};
+use std::ops::MulAssign;
 
-/** The G1 identity/infinity */
-#[rustfmt::skip]
-pub const G1_IDENTITY: ArkG1 = ArkG1(blst_p1 {
-    x: blst_fp { l: [0, 0, 0, 0, 0, 0], },
-    y: blst_fp { l: [0, 0, 0, 0, 0, 0], },
-    z: blst_fp { l: [0, 0, 0, 0, 0, 0], },
-});
-
-pub fn g1_linear_combination(out: &mut ArkG1, points: &[ArkG1], scalars: &[BlstFr], _len: usize) {
-    let ark_points: Vec<G1Affine> = {
-        cfg_into_iter!(points)
-            .map(|point| {
-                blst_p1_into_pc_g1projective(&point.0)
-                    .unwrap()
-                    .into_affine()
-            })
-            .collect()
-    };
-
-    let ark_scalars: Vec<BigInteger256> = {
-        cfg_into_iter!(scalars)
-            .map(|scalar| ArkFr::into_repr(&blst_fr_into_pc_fr(scalar)))
-            .collect()
-    };
-
-    let res = VariableBaseMSM::multi_scalar_mul(ark_points.as_slice(), ark_scalars.as_slice());
-    *out = pc_g1projective_into_blst_p1(res).unwrap();
+pub fn g1_linear_combination(
+    out: &mut ArkG1,
+    points: &[ArkG1],
+    scalars: &[ArkFr],
+    len: usize,
+    precomputation: Option<&PrecomputationTable<ArkFr, ArkG1, ArkFp, ArkG1Affine>>,
+) {
+    *out = msm::<ArkG1, ArkFp, ArkG1Affine, ArkG1ProjAddAffine, ArkFr>(
+        points,
+        scalars,
+        len,
+        precomputation,
+    );
 }
 
 pub fn make_data(data: usize) -> Vec<ArkG1> {
     let mut vec = Vec::new();
     if data != 0 {
-        vec.push(ArkG1(G1_GENERATOR));
+        vec.push(G1_GENERATOR);
         for i in 1..data as u64 {
-            let mut temp = vec[(i - 1) as usize];
-            vec.push(temp.add_or_dbl(&ArkG1(G1_GENERATOR)));
+            let res = vec[(i - 1) as usize].add_or_dbl(&G1_GENERATOR);
+            vec.push(res);
         }
     }
     vec
@@ -145,12 +59,11 @@ impl FFTG1<ArkG1> for FFTSettings {
         fft_g1_fast(&mut ret, data, 1, roots, stride, 1);
 
         if inverse {
-            let inv_fr_len = BlstFr::from_u64(data.len() as u64).inverse();
+            let inv_fr_len = ArkFr::from_u64(data.len() as u64).inverse();
             ret[..data.len()]
                 .iter_mut()
-                .for_each(|f| *f = f.mul(&inv_fr_len));
+                .for_each(|f| f.0.mul_assign(&inv_fr_len.fr));
         }
-
         Ok(ret)
     }
 }
@@ -159,7 +72,7 @@ pub fn fft_g1_slow(
     ret: &mut [ArkG1],
     data: &[ArkG1],
     stride: usize,
-    roots: &[BlstFr],
+    roots: &[ArkFr],
     roots_stride: usize,
     _width: usize,
 ) {
@@ -178,7 +91,7 @@ pub fn fft_g1_fast(
     ret: &mut [ArkG1],
     data: &[ArkG1],
     stride: usize,
-    roots: &[BlstFr],
+    roots: &[ArkFr],
     roots_stride: usize,
     _width: usize,
 ) {
@@ -221,13 +134,4 @@ pub fn fft_g1_fast(
     } else {
         ret[0] = data[0];
     }
-}
-
-pub fn log_2_byte(b: u8) -> usize {
-    let mut r = u8::from(b > 0xF) << 2;
-    let mut b = b >> r;
-    let shift = u8::from(b > 0x3) << 1;
-    b >>= shift + 1;
-    r |= shift | b;
-    r.into()
 }

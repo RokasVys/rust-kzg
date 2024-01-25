@@ -1,6 +1,8 @@
 use criterion::Criterion;
 use kzg::{
-    FFTFr, FFTSettings, FK20MultiSettings, FK20SingleSettings, Fr, KZGSettings, Poly, G1, G2,
+    common_utils::{is_power_of_two, log2_pow2},
+    FFTFr, FFTSettings, FK20MultiSettings, FK20SingleSettings, Fr, G1Affine, G1Fp, G1GetFp, G1Mul,
+    KZGSettings, Poly, G1, G2,
 };
 use rand::{thread_rng, RngCore};
 
@@ -11,28 +13,16 @@ pub const SECRET: [u8; 32usize] = [
 
 const BENCH_SCALE: usize = 14;
 
-fn is_power_of_two(n: usize) -> bool {
-    n & (n - 1) == 0
-}
-
-fn log2_pow2(n: u32) -> usize {
-    let b: [u32; 5] = [0xaaaaaaaa, 0xcccccccc, 0xf0f0f0f0, 0xff00ff00, 0xffff0000];
-    let mut r: u32 = u32::from((n & b[0]) != 0);
-    r |= u32::from((n & b[1]) != 0) << 1;
-    r |= u32::from((n & b[2]) != 0) << 2;
-    r |= u32::from((n & b[3]) != 0) << 3;
-    r |= u32::from((n & b[4]) != 0) << 4;
-    r as usize
-}
-
 pub fn bench_fk_single_da<
     TFr: Fr,
-    TG1: G1,
+    TG1: G1 + G1Mul<TFr> + G1GetFp<TG1Fp>,
     TG2: G2,
     TPoly: Poly<TFr>,
     TFFTSettings: FFTSettings<TFr>,
-    TKZGSettings: KZGSettings<TFr, TG1, TG2, TFFTSettings, TPoly>,
-    TFK20SingleSettings: FK20SingleSettings<TFr, TG1, TG2, TFFTSettings, TPoly, TKZGSettings>,
+    TKZGSettings: KZGSettings<TFr, TG1, TG2, TFFTSettings, TPoly, TG1Fp, TG1Affine>,
+    TFK20SingleSettings: FK20SingleSettings<TFr, TG1, TG2, TFFTSettings, TPoly, TKZGSettings, TG1Fp, TG1Affine>,
+    TG1Fp: G1Fp,
+    TG1Affine: G1Affine<TG1, TG1Fp>,
 >(
     c: &mut Criterion,
     generate_trusted_setup: &dyn Fn(usize, [u8; 32usize]) -> (Vec<TG1>, Vec<TG2>),
@@ -44,7 +34,7 @@ pub fn bench_fk_single_da<
     let secrets_len = n_len + 1;
 
     assert!(n_len >= 2 * poly_len);
-    let mut p = TPoly::new(poly_len).unwrap();
+    let mut p = TPoly::new(poly_len);
     for (i, &coeff) in coeffs.iter().enumerate() {
         p.set_coeff_at(i, &TFr::from_u64(coeff));
     }
@@ -65,12 +55,14 @@ pub fn bench_fk_single_da<
 
 pub fn bench_fk_multi_da<
     TFr: Fr,
-    TG1: G1,
+    TG1: G1 + G1Mul<TFr> + G1GetFp<TG1Fp>,
     TG2: G2,
     TPoly: Poly<TFr>,
     TFFTSettings: FFTSettings<TFr> + FFTFr<TFr>,
-    TKZGSettings: KZGSettings<TFr, TG1, TG2, TFFTSettings, TPoly>,
-    TFK20MultiSettings: FK20MultiSettings<TFr, TG1, TG2, TFFTSettings, TPoly, TKZGSettings>,
+    TKZGSettings: KZGSettings<TFr, TG1, TG2, TFFTSettings, TPoly, TG1Fp, TG1Affine>,
+    TFK20MultiSettings: FK20MultiSettings<TFr, TG1, TG2, TFFTSettings, TPoly, TKZGSettings, TG1Fp, TG1Affine>,
+    TG1Fp: G1Fp,
+    TG1Affine: G1Affine<TG1, TG1Fp>,
 >(
     c: &mut Criterion,
     generate_trusted_setup: &dyn Fn(usize, [u8; 32usize]) -> (Vec<TG1>, Vec<TG2>),
@@ -86,7 +78,7 @@ pub fn bench_fk_multi_da<
 
     let chunk_count: usize = n / chunk_len;
     let secrets_len: usize = 2 * n;
-    let width: usize = log2_pow2(secrets_len as u32);
+    let width: usize = log2_pow2(secrets_len);
 
     // Initialise the secrets and data structures
     let (s1, s2) = generate_trusted_setup(secrets_len, SECRET);
@@ -95,7 +87,7 @@ pub fn bench_fk_multi_da<
     let fk = TFK20MultiSettings::new(&ks, secrets_len, chunk_len).unwrap();
 
     // Create a test polynomial of size n that's independent of chunk_len
-    let mut p = TPoly::new(n).unwrap();
+    let mut p = TPoly::new(n);
     for i in 0..chunk_count {
         for j in 0..chunk_len {
             let p_index = i * chunk_len + j;

@@ -5,16 +5,13 @@ edition = "2021"
 
 [dependencies]
 rust-kzg-mcl = { path = '../kzg' }
-blst = {'git' = 'https://github.com/supranational/blst.git'}
+blst = "0.3.11"
 kzg = { path = "../../kzg" }
 kzg-bench = { path = "../../kzg-bench" }
 
 [dev-dependencies]
 rand = "0.8.5"
-criterion = "0.4.0"
-
-[features]
-minimal-spec = ["kzg/minimal-spec", "kzg-bench/minimal-spec"]
+criterion = "0.5.1"
 
 [[bench]]
 name = "shared_fk20"
